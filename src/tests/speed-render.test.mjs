@@ -137,3 +137,17 @@ test("ship squashes for one second on boost entry and stretches on exit, then re
   }
   assert.equal(engine.warpHeight, 1);
 });
+
+test('all terrain shelves follow simulation travel, including reduced motion and boost', () => {
+  for (const reduced of [false, true]) {
+    const engine = flight(true, reduced);
+    for (let i = 0; i < 20; i++) {
+      engine.model.update(0.05);
+      engine.updateFlightEffects(0.05, 0);
+    }
+    const travel = engine.canyon.uniforms.travel.value;
+    assert.ok(travel.x > 3.6);
+    assert.ok(Math.abs(travel.y - travel.x * 0.67) < 1e-6);
+    assert.ok(Math.abs(travel.z - travel.x * 1.08) < 1e-6);
+  }
+});
