@@ -207,3 +207,18 @@ test("pointer coordinates match the pulled-back camera", () => {
   assert.ok(Math.abs(edge.x - 12 / 0.92) < 1e-6);
   assert.ok(Math.abs(edge.y - 16 / 0.92) < 1e-6);
 });
+
+
+test("electrical pickups publish their countdowns and replay clears them", () => {
+  const engine = Object.create(NeonShooter.prototype);
+  let state;
+  Object.assign(engine, { model: new ShooterGame(), callouts: [], onState: value => {state = value;} });
+  engine.model.collectPowerup("emp");
+  engine.model.collectPowerup("chain");
+  engine.publish();
+  assert.equal(state.upgrades.find(upgrade => upgrade.id === "emp").remaining, 5);
+  assert.equal(state.upgrades.find(upgrade => upgrade.id === "chain").remaining, 12);
+  engine.model.reset();
+  engine.publish();
+  assert.ok(!state.upgrades.some(upgrade => ["emp", "chain"].includes(upgrade.id)));
+});

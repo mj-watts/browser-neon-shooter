@@ -14,6 +14,7 @@ import CapitalShip, { capitalRumble } from "./CapitalShip";
 import MuzzleFlashes from "./MuzzleFlashes";
 import OrbTrails from "./OrbTrails";
 import SpeedTrails from "./SpeedTrails.js";
+import ElectricEffects from "./ElectricEffects.js";
 import ShipFireTrails from "./ShipFireTrails";
 import BlockLaser from "./BlockLaser";
 import { createBulletTemplates } from "./WeaponStrength.js";
@@ -109,6 +110,8 @@ export default class NeonShooter {
       );
       this.capitalShip = new CapitalShip((resource) => this.track(resource));
       this.makeShotTrails();
+      this.electricEffects = new ElectricEffects((resource) => this.track(resource));
+      this.projectileScene.add(this.electricEffects.group);
       this.makeBackground();
       this.canyon = new CanyonBackground((resource) => this.track(resource));
       this.scene.add(this.canyon.mesh);
@@ -957,6 +960,7 @@ export default class NeonShooter {
     this.muzzleFlashes.clear();
     this.orbTrails.clear();
     this.speedTrails?.clear();
+    this.electricEffects?.clear();
     this.civilianShips.clear();
     this.shipFireTrails.clear();
     this.civilianPenalty = null;
@@ -1000,6 +1004,7 @@ export default class NeonShooter {
     this.muzzleFlashes.clear();
     this.orbTrails.clear();
     this.speedTrails?.clear();
+    this.electricEffects?.clear();
     this.civilianShips.clear();
     this.shipFireTrails.clear();
     this.callouts = [];
@@ -1089,6 +1094,8 @@ export default class NeonShooter {
           ["speed", this.model.speedTime],
           [this.model.companionMode, this.model.companionTime],
           ["scatter", this.model.scatterTime],
+          ["emp", this.model.empTime],
+          ["chain", this.model.chainTime],
           ["fleet", this.model.fleetTime],
           ["assault", this.model.assaultTime],
         ]
@@ -1263,10 +1270,16 @@ export default class NeonShooter {
       this.exhaustAccumulator = 0;
       this.orbTrails.clear();
       this.speedTrails?.clear();
+      this.electricEffects?.clear();
       this.particles = this.particles.filter(
         (particle) => particle.source !== "heroThrust",
       );
     }
+    if (type === "empPulse") {
+      this.electricEffects?.pulse(x, y, Math.hypot(this.viewWidth, this.viewHeight), this.reducedMotion);
+      this.notice = { text: "EMP PULSE · TURRETS DISABLED", until: this.model.clock + POWERUPS.emp.duration };
+    }
+    if (type === "chainLightning") this.electricEffects?.lightning(event.points, this.reducedMotion);
     if (type === "shot") {
       if (Number.isFinite(x)) this.primaryFlashUntil = this.model.clock + 0.06;
       else this.companionFlashUntil = this.model.clock + 0.06;
@@ -2055,6 +2068,7 @@ export default class NeonShooter {
           dt,
           this.reducedMotion,
         );
+        this.electricEffects?.update(dt);
         this.updateDebris(dt);
         this.civilianShips.update(dt);
       }

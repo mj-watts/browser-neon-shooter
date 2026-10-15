@@ -11,6 +11,8 @@ export const POWERUPS = {
   scatter: { label: "SCATTER BOMBS", color: "orange", duration: 12, weight: 8 },
   mega: { label: "MEGA LASER", color: "gold", duration: 12, weight: 8 },
   fleet: { label: "CALL IN THE FLEET", color: "cyan", duration: 10, weight: 8 },
+  emp: { label: "EMP PULSE", color: "cyan", duration: 5, weight: 8 },
+  chain: { label: "CHAIN LIGHTNING", color: "violet", duration: 12, weight: 8 },
   assault: { label: "ASSAULT FLEET", color: "orange", duration: 20, weight: 8 },
 };
 

@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { ShooterGame, advanceSimulation } from "../assets/js/ShooterGame.js";
+import { POWERUPS } from "../assets/js/Powerups.js";
 
 function advance(game, seconds, input = {}) {
   for (let t = 0; t < seconds; t += 1 / 60) game.update(1 / 60, input);
@@ -354,17 +355,13 @@ test("shield blocks collisions until it expires and all upgrades reset on replay
   assert.equal(game.lasers.length, 0);
 });
 
-test("all four package types can spawn and missile impacts trigger the area blast", () => {
-  for (const [index, power] of [
-    "machine",
-    "laser",
-    "missile",
-    "shield",
-  ].entries()) {
-    const game = new ShooterGame(
-      () => {},
-      () => [0.05, 0.15, 0.25, 0.35][index],
-    );
+test("every package type can spawn and missile impacts trigger the area blast", () => {
+  const total = Object.values(POWERUPS).reduce((sum, config) => sum + config.weight, 0);
+  let previous = 0;
+  for (const [power, config] of Object.entries(POWERUPS)) {
+    const roll = (previous + config.weight / 2) / total;
+    previous += config.weight;
+    const game = new ShooterGame(() => {}, () => roll);
     game.spawnSupply();
     assert.equal(game.pickups[0].power, power);
   }
@@ -407,20 +404,7 @@ test("destruction identifies the enemy design so its own blocks can scatter", ()
 });
 
 test("supply pool makes rotating orbs more frequent and includes every add-on", () => {
-  const counts = {
-    machine: 0,
-    laser: 0,
-    missile: 0,
-    shield: 0,
-    speed: 0,
-    orbit: 0,
-    wingmen: 0,
-    spread: 0,
-    scatter: 0,
-    mega: 0,
-    fleet: 0,
-    assault: 0,
-  };
+  const counts = Object.fromEntries(Object.keys(POWERUPS).map(power => [power, 0]));
   for (let i = 0; i < 1000; i++) {
     const game = new ShooterGame(
       () => {},
@@ -429,20 +413,12 @@ test("supply pool makes rotating orbs more frequent and includes every add-on", 
     game.spawnSupply();
     counts[game.pickups[0].power]++;
   }
-  assert.deepEqual(counts, {
-    machine: 79,
-    laser: 79,
-    missile: 123,
-    shield: 79,
-    speed: 79,
-    orbit: 216,
-    wingmen: 57,
-    spread: 58,
-    scatter: 57,
-    mega: 58,
-    fleet: 57,
-    assault: 58,
-  });
+  const total = Object.values(POWERUPS).reduce((sum, config) => sum + config.weight, 0);
+  for (const [power, config] of Object.entries(POWERUPS)) {
+    assert.ok(Math.abs(counts[power] - config.weight / total * 1000) <= 1, power);
+  }
+  assert.ok(counts.orbit > counts.machine * 2);
+
 });
 
 test("reversing keeps the ship and weapons facing forward", () => {

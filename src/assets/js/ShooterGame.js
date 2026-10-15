@@ -49,6 +49,9 @@ export class ShooterGame {
     this.assaultFleet = [];
     this.assaultTime = 0;
     this.assaultCooldown = 0;
+    this.empTime = 0;
+    this.chainTime = 0;
+    this.chainCooldown = 0;
     this.scatterTime = 0;
     this.scatterCooldown = 0;
     this.supplyCooldown = 2.5 + this.random() * 1.5;
@@ -357,6 +360,7 @@ export class ShooterGame {
           y = ship.y + turret.y;
         turret.aim =
           Math.atan2(this.player.y - y, this.player.x - x) - Math.PI / 2;
+        if (this.empTime > 0) continue;
         turret.fireCooldown -= dt;
         if (
           Math.abs(y) > halfHeight - 1 ||
@@ -432,6 +436,10 @@ export class ShooterGame {
   }
 
   refreshGateLasers() {
+    if (this.empTime > 0) {
+      this.gateLasers = [];
+      return;
+    }
     this.gateLasers = this.groundEnemies
       .filter((enemy) => enemy.gateId && enemy.side === -1)
       .flatMap((left) => {
@@ -535,6 +543,7 @@ export class ShooterGame {
         }
         continue;
       }
+      if (this.empTime > 0) continue;
       if (enemy.laserAttack) {
         enemy.laserAttack.remaining -= dt;
         if (enemy.laserAttack.remaining <= 0) {
@@ -768,6 +777,16 @@ export class ShooterGame {
       this.weapon = power;
       this.weaponTime = 12;
       this.fireCooldown = 0;
+    } else if (power === "emp") {
+      this.empTime = POWERUPS.emp.duration;
+      this.bullets = this.bullets.filter((bullet) => bullet.friendly);
+      this.groundEnemies.forEach((enemy) => { enemy.laserAttack = null; });
+      this.turretLasers = [];
+      this.gateLasers = [];
+      this.onEvent({ type: "empPulse", x: this.player.x, y: this.player.y });
+    } else if (power === "chain") {
+      this.chainTime = POWERUPS.chain.duration;
+      this.chainCooldown = 0;
     } else if (power === "missile") {
       this.missileCount = Math.min(10, this.missileCount + 1);
     } else if (power === "shield") this.shieldTime = 8;
@@ -884,6 +903,45 @@ export class ShooterGame {
       (item) => Math.abs(item.y) <= 16 && distance(item, missile) < radius,
     );
     if (civilian && type !== "missileExplosion") this.hitCivilian(civilian);
+  }
+
+  updateElectrical(dt, firing) {
+    this.chainTime = Math.max(0, this.chainTime - dt);
+    this.chainCooldown = Math.max(0, this.chainCooldown - dt);
+    if (!firing || !this.chainTime || this.chainCooldown > 0) return;
+    const halfHeight = (this.playfieldHeight || 32) / 2;
+    const halfWidth = (this.sceneryWidth || 24) / 2;
+    const targets = [
+      ...this.enemies.map((enemy) => ({ point: enemy, kind: "air" })),
+      ...this.groundEnemies.map((enemy) => ({ point: enemy, kind: "ground" })),
+      ...this.capitalTurretTargets().map((point) => ({ point, kind: "capital" })),
+    ].filter(({ point }) => point.age >= 0 && Math.abs(point.y) <= halfHeight && Math.abs(point.x) <= halfWidth);
+    const points = [{ x: this.player.x, y: this.player.y + 0.8 }];
+    for (let jump = 0; jump < 4; jump++) {
+      const origin = points[points.length - 1];
+      const range = jump === 0 ? 12 : 7;
+      let closest = -1, nearest = range;
+      targets.forEach(({ point }, index) => {
+        if (jump === 0 && point.y <= this.player.y) return;
+        const gap = distance(point, origin);
+        if (gap <= nearest) { nearest = gap; closest = index; }
+      });
+      if (closest < 0) break;
+      const { point, kind } = targets.splice(closest, 1)[0];
+      points.push({ x: point.x, y: point.y });
+      if (kind === "capital") this.damageCapitalTurret(point, 2);
+      else {
+        point.hp -= 2;
+        if (point.hp <= 0) {
+          if (kind === "ground") this.destroyGroundEnemy(point);
+          else this.destroyEnemy(point, true);
+        }
+      }
+    }
+    if (points.length > 1) {
+      this.chainCooldown = 0.4;
+      this.onEvent({ type: "chainLightning", points });
+    }
   }
 
   updateAddons(dt, firing) {
@@ -1176,6 +1234,9 @@ export class ShooterGame {
       this.orbitTime = 0;
       this.orbitCount = 0;
       this.companionTime = 0;
+      this.empTime = 0;
+      this.chainTime = 0;
+      this.chainCooldown = 0;
       this.missileCount = 0;
       this.shieldTime = 0;
       this.speedTime = 0;
@@ -1257,6 +1318,7 @@ export class ShooterGame {
       }
       return;
     }
+    this.empTime = Math.max(0, this.empTime - dt);
     this.speedTime = Math.max(0, this.speedTime - dt);
     this.speedBlend = clamp(
       this.speedBlend + (this.speedTime > 0 ? dt / 0.65 : -dt / 0.85),
@@ -1497,6 +1559,7 @@ export class ShooterGame {
       if (this.lives <= 0) return;
     }
 
+    this.updateElectrical(dt, firing);
     this.hitOrbitals();
     this.hitFleet();
     // Stop each beam at its nearest civilian.
