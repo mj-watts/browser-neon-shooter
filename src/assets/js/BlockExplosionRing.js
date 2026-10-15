@@ -35,7 +35,7 @@ export default class BlockExplosionRing extends THREE.InstancedMesh {
       this.transform.updateMatrix();
       this.setMatrixAt(index, this.transform.matrix);
     });
-    this.material.opacity = (1 - progress) ** 1.3 * 0.8;
+    this.material.opacity = (1 - progress) ** 1.3 * 0.8 * (this.userData.opacity ?? 1);
     this.instanceMatrix.needsUpdate = true;
   }
 }

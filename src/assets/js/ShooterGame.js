@@ -1590,7 +1590,11 @@ export class ShooterGame {
           ...this.enemies,
           ...this.groundEnemies,
           ...this.capitalTurretTargets(),
-        ].filter((enemy) => enemy.age >= 0 && Math.abs(enemy.y) < 17);
+        ].filter((enemy) =>
+          enemy.age >= 0 &&
+          Math.abs(enemy.x) < (this.sceneryWidth || 24) / 2 &&
+          Math.abs(enemy.y) < (this.playfieldHeight || 32) / 2,
+        );
         const aim = targets.reduce(
           (nearest, enemy) =>
             !nearest || distance(enemy, bullet) < distance(nearest, bullet)

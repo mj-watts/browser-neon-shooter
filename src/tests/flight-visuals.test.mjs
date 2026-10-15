@@ -88,3 +88,23 @@ test('player missiles patrol between waves, ignore offscreen enemies, then acqui
   assert.ok(acquired);
   assert.equal(game.bullets.includes(missile), false);
 });
+
+test('background stars are crisp, and every terrain shelf scrolls and stops with time', async () => {
+  const { default: CanyonBackground } = await import('../assets/js/CanyonBackground.js');
+  const engine = renderer();
+  engine.makeBackground();
+  assert.equal(engine.stars.material.map, null);
+  assert.ok([...engine.stars.geometry.attributes.color.array].every(channel => channel <= 1));
+  const canyon = new CanyonBackground(resource => engine.track(resource));
+  canyon.resize(48, 32);
+  assert.equal(canyon.uniforms.width.value, 48);
+  assert.equal(canyon.mesh.scale.y, 32);
+  canyon.update(1, 10, 1, 1);
+  assert.deepEqual(canyon.uniforms.travel.value.toArray(), [3.5999999999999996, 6.7, 10.8]);
+  assert.equal(canyon.mesh.visible, true);
+  const travelled = canyon.uniforms.travel.value.clone();
+  canyon.update(0, 10, 0, 0);
+  assert.deepEqual(canyon.uniforms.travel.value, travelled);
+  assert.equal(canyon.mesh.visible, false);
+  for (const resource of engine.resources) resource.dispose();
+});

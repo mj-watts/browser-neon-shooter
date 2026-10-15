@@ -57,7 +57,7 @@ export default class NeonShooter {
     this.shake = 0;
     this.disposed = false;
     this.model = new ShooterGame((event) => this.event(event));
-    this.model.scenerySpeed = reducedMotion ? 0.072 : 3.6;
+    this.model.scenerySpeed = reducedMotion ? 3.6 : 8;
     try {
       this.renderer = new THREE.WebGLRenderer({
         canvas,
@@ -89,7 +89,7 @@ export default class NeonShooter {
       );
       this.composer.addPass(this.bloom);
       // Tiny highlights become blocky in the coarse bloom mips. Render their
-      // own radial halos after bloom, while ships and explosions keep a softer bloom.
+      // own radial halos after bloom; solid hulls and pickups stay below its threshold.
       const projectilePass = new RenderPass(this.projectileScene, this.camera);
       projectilePass.clear = false;
       this.composer.addPass(projectilePass);
@@ -119,7 +119,6 @@ export default class NeonShooter {
       this.fleetTemplates = Object.fromEntries(
         Object.entries(FLEET_DESIGNS).map(([side, design]) => {
           const ship = this.makeShip(design.color, 0, false, design);
-          ship.scale.setScalar(0.55);
           return [side, ship];
         }),
       );
@@ -143,8 +142,8 @@ export default class NeonShooter {
       this.materials = {
         friendly: this.material("cyan", 2.2),
         hostile: this.material("pink", 1.9),
-        star: this.material("gold", 1.8),
-        life: this.material("red", 1.8),
+        star: this.material("gold", 0.95),
+        life: this.material("red", 0.95),
         bomb: this.material("orange", 2.2),
         shrapnel: this.material("orange", 2),
       };
@@ -310,9 +309,7 @@ export default class NeonShooter {
       cubes.setMatrixAt(index, transform.matrix);
       cubes.setColorAt(
         index,
-        new THREE.Color(block.color).multiplyScalar(
-          block.symbol === "G" ? 1.5 : 0.95,
-        ),
+        new THREE.Color(block.color).multiplyScalar(0.95),
       );
       edgeParts.push(edge.clone().translate(block.x, block.y, block.z));
     });
@@ -332,7 +329,12 @@ export default class NeonShooter {
         ),
       ),
     );
-    group.scale.setScalar(player ? 0.62 : 0.52);
+    // Match each escort hull to 90% of the hero's width despite different silhouettes.
+    const hullWidth = Math.max(...rows.map((row) => row.length)) - 0.12;
+    group.scale.setScalar(
+      design ? (0.75 * 0.9 * (hero[0].length - 0.12)) / hullWidth
+        : player ? 0.62 : 0.52,
+    );
     group.rotation.x = 0.16;
     group.userData.blocks = blocks;
     if (design) {
@@ -586,12 +588,12 @@ export default class NeonShooter {
     group.add(
       new THREE.Mesh(
         this.makeBlockGeometry(frame, 0.15, 0.3),
-        this.material(color, 1.1),
+        this.material(color, 0.95),
       ),
     );
     const glyph = new THREE.Mesh(
       this.makeBlockGeometry(POWER_ICONS[power], 0.17, 0.12),
-      this.material(color, 1.7),
+      this.material(color, 0.95),
     );
     glyph.position.z = 0.16;
     group.add(glyph);
@@ -599,21 +601,6 @@ export default class NeonShooter {
     back.position.z = -0.16;
     back.rotation.y = Math.PI;
     group.add(back);
-    const halo = new THREE.Sprite(
-      this.track(
-        new THREE.SpriteMaterial({
-          map: this.glowTexture,
-          color: COLORS[color],
-          transparent: true,
-          opacity: 0.35,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        }),
-      ),
-    );
-    halo.scale.set(2.8, 2.8, 1);
-    halo.position.z = -0.2;
-    group.add(halo);
     return group;
   }
 
@@ -626,12 +613,9 @@ export default class NeonShooter {
           0.11,
           0.13,
         ),
-        this.material("orange", 2),
+        this.material("orange", 0.95),
       ),
     );
-    const halo = new THREE.Sprite(this.haloMaterials.gold);
-    halo.scale.set(0.8, 1.7, 1);
-    group.add(halo);
     return group;
   }
 
@@ -656,12 +640,9 @@ export default class NeonShooter {
               0.14,
               0.14,
             ),
-            this.material(color, 2.4),
+            this.material(color, 0.95),
           ),
         );
-        const halo = new THREE.Sprite(this.haloMaterials[color]);
-        halo.scale.set(1.1, 1.1, 1);
-        orb.add(halo);
         return [kind, orb];
       }),
     );
@@ -697,11 +678,10 @@ export default class NeonShooter {
       this.makeBlockGeometry(shieldRows, 0.18, 0.08),
       this.track(
         new THREE.MeshBasicMaterial({
-          color: new THREE.Color(COLORS.mint).multiplyScalar(1.5),
+          color: new THREE.Color(COLORS.mint).multiplyScalar(0.95),
           transparent: true,
           opacity: 0.65,
           depthWrite: false,
-          blending: THREE.AdditiveBlending,
         }),
       ),
     );
@@ -828,7 +808,7 @@ export default class NeonShooter {
       positions[i * 3 + 2] = -2 - Math.random() * 15;
       const color = new THREE.Color(
         i % 4 === 0 ? "#c47fff" : "#85c5e4",
-      ).multiplyScalar(0.35 + Math.random() * 1.3);
+      ).multiplyScalar(0.35 + Math.random() * 0.55);
       colors.set(color.toArray(), i * 3);
     }
     const geometry = this.track(new THREE.BufferGeometry());
@@ -839,7 +819,6 @@ export default class NeonShooter {
       this.track(
         new THREE.PointsMaterial({
           size: 0.065,
-          map: this.glowTexture,
           vertexColors: true,
           transparent: true,
           opacity: 0.9,
@@ -1187,7 +1166,8 @@ export default class NeonShooter {
     });
   }
 
-  burst(x, y, size, color = "pink", largeBlast = false, blocky = false) {
+  burst(x, y, size, color = "pink", largeBlast = false, blocky = false, opacity = 1) {
+    const lastParticle = this.particles.at(-1);
     const secondary = color === "cyan" || color === "mint" ? "pink" : "cyan";
     if (this.reducedMotion) size *= 0.65;
     if (!blocky) {
@@ -1254,7 +1234,9 @@ export default class NeonShooter {
         }),
       );
       const mesh = new BlockExplosionRing(this.ringGeometry, material);
-      mesh.position.set(x, y, 0.4);
+      mesh.position.set(x, y, opacity < 1 ? -24 : 0.4);
+      mesh.userData.opacity = opacity;
+      mesh.material.color.multiplyScalar(opacity);
       this.scene.add(mesh);
       this.rings.push({
         mesh,
@@ -1262,6 +1244,13 @@ export default class NeonShooter {
         life: 1.35 + i * 0.3,
         size: size * (blocky ? 1.4 + i * 0.4 : 2.8 + i),
       });
+    }
+    for (const particle of this.particles.slice(this.particles.indexOf(lastParticle) + 1)) {
+      particle.opacity = opacity;
+      if (opacity < 1) {
+        particle.z = -24;
+        particle.color.multiplyScalar(opacity);
+      }
     }
     this.shake = Math.min(0.26, this.shake + size * 0.045);
     this.flash = Math.min(0.22, this.flash + size * 0.035);
@@ -1341,7 +1330,10 @@ export default class NeonShooter {
     if (type === "hit" && this.model.lives > 0)
       this.scatterShip(event, true, 0.2);
     if ((type === "hit" && this.model.lives > 0) || type === "playerCrash")
-      this.burst(x, y, size, type === "playerCrash" ? "orange" : "cyan", true);
+      this.burst(
+        x, y, size, type === "playerCrash" ? "orange" : "cyan",
+        true, false, type === "playerCrash" ? 0.4 : 1,
+      );
     if (type === "collect") {
       for (let i = 0; i < 12; i++)
         this.addParticle(
@@ -1388,7 +1380,7 @@ export default class NeonShooter {
       // A small, distant impact without the full-screen flash or camera shake.
       const shake = this.shake,
         flash = this.flash;
-      this.burst(x, y, event.size, "orange");
+      this.burst(x, y, event.size, "orange", false, false, 0.3);
       this.shake = shake;
       this.flash = flash;
     }
@@ -1514,23 +1506,11 @@ export default class NeonShooter {
                 : this.materials.hostile,
           );
         if (
-          type !== "capital" &&
-          type !== "enemy" &&
-          type !== "civilian" &&
-          type !== "ground" &&
-          type !== "cart" &&
-          type !== "orb" &&
-          type !== "companion" &&
-          type !== "fleet" &&
-          entity.kind !== "powerup" &&
+          type === "bullet" &&
           entity.kind !== "missile"
         ) {
           const color =
-            type === "pickup"
-              ? entity.kind === "life"
-                ? "red"
-                : "gold"
-              : entity.friendly
+            entity.friendly
                 ? ["bomb", "shrapnel"].includes(entity.kind)
                   ? "orange"
                   : entity.strength === 3
@@ -1540,8 +1520,7 @@ export default class NeonShooter {
                       : "blue"
                 : "pink";
           const halo = new THREE.Sprite(this.haloMaterials[color]);
-          if (type === "pickup") halo.scale.set(2.2, 2.2, 1);
-          else if (entity.kind === "bomb") halo.scale.set(1.3, 1.3, 1);
+          if (entity.kind === "bomb") halo.scale.set(1.3, 1.3, 1);
           else if (entity.friendly) halo.scale.set(0.3, 0.6, 1);
           else halo.scale.set(1.3, 1.3, 1);
           halo.position.z = -0.04;
@@ -1761,7 +1740,7 @@ export default class NeonShooter {
         index,
         p.size * (0.4 + 0.6 * Math.max(0, p.life / p.maxLife)),
       );
-      attributes.alpha.setX(index, Math.max(0, p.life / p.maxLife));
+      attributes.alpha.setX(index, Math.max(0, p.life / p.maxLife) * (p.opacity ?? 1));
     });
     for (const attribute of Object.values(attributes))
       attribute.needsUpdate = true;
@@ -1892,8 +1871,11 @@ export default class NeonShooter {
           : 0,
       canyonReveal,
     );
-    if (this.mode === "game")
-      this.canyon.uniforms.travel.value.x = this.model.groundTravel;
+    if (this.mode === "game") {
+      // Use the simulation's world travel for every shelf, matching ground units.
+      const travel = this.model.groundTravel;
+      this.canyon.uniforms.travel.value.set(travel, travel * 0.67, travel * 1.08);
+    }
     this.clouds.forEach((cloud) => {
       cloud.visible = canyonReveal < 0.8;
     });
@@ -2034,9 +2016,10 @@ export default class NeonShooter {
           for (const missile of this.model.bullets.filter(
             (bullet) => bullet.kind === "missile",
           )) {
+            const speed = Math.hypot(missile.vx, missile.vy) || 1;
             this.addParticle(
-              missile.x,
-              missile.y - Math.sign(missile.vy) * 0.4,
+              missile.x - missile.vx / speed * 0.4,
+              missile.y - missile.vy / speed * 0.4,
               -missile.vx * 0.3,
               -missile.vy * 0.3,
               "orange",
