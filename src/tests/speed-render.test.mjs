@@ -22,6 +22,9 @@ function flight(boosted, reducedMotion = false) {
   const positions = new THREE.BufferAttribute(new Float32Array([0, 10, -1]), 3);
   const streak = new THREE.BufferAttribute(new Float32Array(6), 3);
   Object.assign(engine, {
+    camera: new THREE.OrthographicCamera(-12, 12, 16, -16, 0.1, 100),
+    viewWidth: 24,
+    viewHeight: 32,
     mode: "game",
     reducedMotion,
     thrust: 0,
@@ -150,4 +153,57 @@ test('all terrain shelves follow simulation travel, including reduced motion and
     assert.ok(Math.abs(travel.y - travel.x * 0.67) < 1e-6);
     assert.ok(Math.abs(travel.z - travel.x * 1.08) < 1e-6);
   }
+});
+
+
+test("boost pulls the camera back smoothly and restores framing after expiry", () => {
+  const engine = flight(true);
+  engine.model.update(0.05);
+  engine.updateFlightEffects(0.05, 0);
+  assert.ok(engine.camera.zoom < 1 && engine.camera.zoom > 0.92);
+  for (let i = 0; i < 30; i++) {
+    engine.model.update(0.05);
+    engine.updateFlightEffects(0.05, 0);
+  }
+  assert.ok(Math.abs(engine.camera.zoom - 0.92) < 0.001);
+  const projected = new THREE.Vector3(12, 0, 0).applyMatrix4(engine.camera.projectionMatrix);
+  assert.ok(Math.abs(projected.x - 0.92) < 0.001);
+  engine.model.speedTime = 0;
+  for (let i = 0; i < 40; i++) {
+    engine.model.update(0.05);
+    engine.updateFlightEffects(0.05, 0);
+  }
+  assert.ok(Math.abs(engine.camera.zoom - 1) < 0.001);
+  const reduced = flight(true, true);
+  reduced.model.update(1);
+  reduced.updateFlightEffects(1, 0);
+  assert.equal(reduced.camera.zoom, 1);
+  engine.mode = "transition";
+  engine.updateFlightEffects(0.05, 0);
+  assert.equal(engine.camera.zoom, 1);
+});
+
+test("boost streaks stream downwards as conspicuous long lines", () => {
+  const engine = flight(true);
+  for (let i = 0; i < 30; i++) {
+    engine.model.update(0.05);
+    engine.updateFlightEffects(0.05, 0);
+  }
+  engine.stars.geometry.attributes.position.setXYZ(0, 5, 10, -1);
+  engine.updateFlightEffects(0.02, 0);
+  const positions = engine.streaks.geometry.attributes.position;
+  assert.equal(positions.getX(0), positions.getX(1));
+  assert.ok(positions.getY(0) < 10);
+  assert.ok(positions.getY(1) - positions.getY(0) >= 2.5);
+  assert.ok(engine.streaks.material.opacity >= 0.75);
+});
+
+test("pointer coordinates match the pulled-back camera", () => {
+  const engine = flight(false);
+  engine.canvas = { getBoundingClientRect: () => ({ left: 0, top: 0, width: 240, height: 320 }) };
+  engine.camera.zoom = 0.92;
+  assert.deepEqual(engine.pointerToWorld(120, 160), { x: 0, y: 0 });
+  const edge = engine.pointerToWorld(240, 0);
+  assert.ok(Math.abs(edge.x - 12 / 0.92) < 1e-6);
+  assert.ok(Math.abs(edge.y - 16 / 0.92) < 1e-6);
 });
