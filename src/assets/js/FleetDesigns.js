@@ -1,0 +1,63 @@
+// Stable identities for the four formation slots, from left to right.
+export const FLEET_DESIGNS = {
+  "-2": {
+    color: "mint",
+    palette: { B: "#176b65", V: "#36c99b", C: "#9bffe1", G: "#eafff5" },
+    rows: [
+      ".....C.....",
+      "....BGB....",
+      "...BBGBB...",
+      "C.BBBGBBB.C",
+      "CVVBBGBBVVC",
+      "CVVVBBBVVVC",
+      ".CVVBBBVVC.",
+      "..C.B.B.C..",
+    ],
+    engines: [-2, 2],
+  },
+  "-1": {
+    color: "gold",
+    palette: { B: "#926026", V: "#efab38", C: "#ffe78c", G: "#fff8da" },
+    rows: [
+      "....C....",
+      "...BGB...",
+      "...BGB...",
+      "..VBGBV..",
+      ".CVBGBVC.",
+      "CVVBGBVVC",
+      "CVVBBBVVC",
+      "C..BBB..C",
+      "...B.B...",
+    ],
+    engines: [-1, 1],
+  },
+  1: {
+    color: "violet",
+    palette: { B: "#45338f", V: "#9c78f5", C: "#d9bcff", G: "#f9edff" },
+    rows: [
+      "..C.....C..",
+      "..VB...BV..",
+      "..VBBGBBV..",
+      ".CVBBGBBVC.",
+      "CVVBBGBBVVC",
+      "C..VBBBV..C",
+      "...VB.BV...",
+      "...C...C...",
+    ],
+    engines: [-2, 2],
+  },
+  2: {
+    color: "orange",
+    palette: { B: "#944334", V: "#ed7548", C: "#ffc18a", G: "#fff3da" },
+    rows: [
+      "...C...C...",
+      "...VBGBV...",
+      "..VBBGBBV..",
+      "CVVBBGBBVVC",
+      "CVVBBBBBVVC",
+      "CVV.BBB.VVC",
+      "C...B.B...C",
+    ],
+    engines: [-4, 4],
+  },
+};

@@ -1,0 +1,27 @@
+{
+  "name": "browser-neon-shooter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.15.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test src/tests/*.test.mjs",
+    "test:coverage": "node --test --experimental-test-coverage src/tests/*.test.mjs",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "three": "^0.179.1",
+    "vue": "^3.5.20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "vite": "^8.3.3"
+  },
+  "license": "MIT"
+}
