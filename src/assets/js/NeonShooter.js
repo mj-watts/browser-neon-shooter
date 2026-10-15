@@ -836,7 +836,7 @@ export default class NeonShooter {
       streakGeometry,
       this.track(
         new THREE.LineBasicMaterial({
-          color: "#5884c7",
+          color: "#9ceaff",
           transparent: true,
           opacity: 0.35,
           blending: THREE.AdditiveBlending,
@@ -1133,8 +1133,8 @@ export default class NeonShooter {
   pointerToWorld(clientX, clientY) {
     const rect = this.canvas.getBoundingClientRect();
     return {
-      x: ((clientX - rect.left) / rect.width - 0.5) * this.viewWidth,
-      y: (0.5 - (clientY - rect.top) / rect.height) * this.viewHeight,
+      x: ((clientX - rect.left) / rect.width - 0.5) * this.viewWidth / this.camera.zoom,
+      y: (0.5 - (clientY - rect.top) / rect.height) * this.viewHeight / this.camera.zoom,
     };
   }
 
@@ -1813,6 +1813,13 @@ export default class NeonShooter {
   updateFlightEffects(dt, verticalMotion) {
     const speedBoost = this.mode === "game" && this.model.speedTime > 0;
     const intensity = this.mode === "game" ? this.model.speedIntensity : 0;
+    // Orthographic pullback: preserve world bounds while easing to a wider view.
+    const zoom = this.mode === "game" && !this.reducedMotion
+      ? 1 - intensity * 0.08 : 1;
+    if (this.camera.zoom !== zoom) {
+      this.camera.zoom = zoom;
+      this.camera.updateProjectionMatrix();
+    }
     const sceneryMultiplier = 1 + intensity * 1.35;
     if (speedBoost !== (this.speedWasActive || false)) {
       this.warpAge = 0;
@@ -1881,7 +1888,7 @@ export default class NeonShooter {
     });
     this.stars.material.opacity = 0.9 * (1 - canyonReveal * 0.85);
     this.streaks.visible = canyonReveal < 0.8 || (intensity > 0.001 && !this.reducedMotion);
-    this.streaks.material.opacity = this.mode === "game" ? intensity * 0.65 : 0.35;
+    this.streaks.material.opacity = this.mode === "game" ? intensity * 0.85 : 0.35;
     const speed = this.reducedMotion
       ? 0.5
       : this.mode === "game"
@@ -1893,7 +1900,8 @@ export default class NeonShooter {
       if (sceneryDt === 0) continue;
       let y =
         positions.getY(i) - sceneryDt * speed * (0.45 + (i % 5) * 0.15);
-      if (y < -22) y = 22;
+      const wrapY = Math.max(22, this.viewHeight / this.camera.zoom / 2 + 4);
+      if (y < -wrapY) y = wrapY;
       positions.setY(i, y);
       if (i < 150) {
         const x = positions.getX(i);
@@ -1901,7 +1909,7 @@ export default class NeonShooter {
         streak.setXYZ(
           i * 2 + 1,
           x,
-          y + (this.reducedMotion ? 0.04 : 0.1 + speed * sceneryMultiplier * 0.035),
+          y + (this.reducedMotion ? 0.04 : 0.1 + speed * sceneryMultiplier * 0.035 + intensity * 1.4),
           -1,
         );
       }

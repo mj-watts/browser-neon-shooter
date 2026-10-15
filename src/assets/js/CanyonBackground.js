@@ -23,12 +23,13 @@ export default class CanyonBackground {
       nearContour: { value: new THREE.Color("#a853d3") },
     };
     this.mesh = new THREE.Mesh(
-      track(new THREE.PlaneGeometry(1, 1)),
+      // Overscan keeps the terrain covering the wider boost camera view.
+      track(new THREE.PlaneGeometry(1.2, 1.2)),
       track(
         new THREE.ShaderMaterial({
           uniforms: this.uniforms,
           vertexShader: `varying vec2 vUv;
-          void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+          void main(){vUv=(uv-.5)*1.2+.5;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
           fragmentShader: `varying vec2 vUv;
           uniform vec3 travel;
           uniform float height, width, horizontal, reveal;
