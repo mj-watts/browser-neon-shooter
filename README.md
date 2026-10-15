@@ -76,6 +76,67 @@ loaded lazily when the launch area approaches the viewport.
 A current browser with WebGL is needed. Browser audio starts after a user
 interaction. The game includes reduced-motion and touch controls.
 
+## Deploy to Cloudflare
+
+The app is configured for **Cloudflare Workers Static Assets** using
+`wrangler.jsonc`. It serves the Vite `dist/` output without server-side game code.
+Wrangler is installed locally as a development dependency.
+
+From this project directory, build only:
+
+```sh
+npm run build:cloudflare
+```
+
+This creates `dist/` and does not upload anything. To preview the built game
+using Cloudflare's local runtime:
+
+```sh
+npm run preview:cloudflare
+```
+
+Open the URL Wrangler prints, normally http://localhost:8787.
+
+To publish, log in to your Cloudflare account once, then deploy:
+
+```sh
+npx wrangler login
+npm run deploy:cloudflare
+```
+
+The deploy script rebuilds first, then uploads to the Worker named
+`browser-neon-shooter`. Wrangler prints the deployed URL. If you have several
+Cloudflare accounts, select the intended account when prompted. Change `name`
+in `wrangler.jsonc` if you want a different Worker name. Re-running the deploy
+script updates that Worker.
+
+To validate the build and configuration without publishing:
+
+```sh
+npm run deploy:cloudflare -- --dry-run
+```
+
+For Cloudflare Workers Git integration, set the project root to this directory,
+use `npm run build:cloudflare` as the build command and `npx wrangler deploy` as
+the deploy command. Use Node.js 24. Cloudflare manages CI authentication.
+
+If you instead use **Cloudflare Pages** Git integration, the same static build
+works: set the build command to `npm run build:cloudflare` and the build output
+directory to `dist`. The deploy script above targets Workers.
+
+Local previews and dry runs do not verify your account permissions or a live
+deployment. Production publishing requires your Cloudflare account.
+
+The compatibility date is pinned to `2026-10-01` so it is supported by the
+installed local runtime. Wrangler 4.148.0 currently has three high-severity npm
+audit findings through its development-only Miniflare/sharp dependency chain.
+`npm audit fix` did not resolve them; the newer Wrangler release advertised by
+the CLI is excluded by this machine's npm release-date policy. The game's
+production dependencies are separate from these local deployment tools.
+
+References: [Workers static assets](https://developers.cloudflare.com/workers/static-assets/get-started/)
+and [asset configuration](https://developers.cloudflare.com/workers/static-assets/binding/).
+
 ## Development
 
 See [architecture and extraction notes](docs/architecture.md) for the entry

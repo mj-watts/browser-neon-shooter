@@ -3,3 +3,9 @@ dist/
 playwright-report/
 test-results/
 .DS_Store
+.wrangler/
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
