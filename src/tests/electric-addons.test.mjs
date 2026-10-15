@@ -15,6 +15,7 @@ function arena() {
 }
 
 test('electric pickups have icons, durations and weighted supply slots', () => {
+  assert.notDeepEqual(POWER_ICONS.emp, POWER_ICONS.orbit);
   for (const power of ['emp', 'chain']) {
     assert.ok(POWERUPS[power]?.duration > 0);
     assert.ok(POWER_ICONS[power]?.length);
@@ -111,4 +112,21 @@ test('lightning needs firing and a target in range, and timers pause, expire and
   game.reset();
   assert.equal(game.chainTime,0);
   assert.equal(game.empTime,0);
+});
+
+
+test('lightning reaches dreadnought turrets but cannot jump across a large gap', () => {
+  const {game,events}=arena();
+  game.spawnCapitalShip();
+  const ship=game.capitalShips[0];
+  ship.y=0;
+  ship.turrets.forEach(t=>{t.destroyed=true;});
+  const turret=ship.turrets[0];
+  Object.assign(turret,{destroyed:false,x:0,y:-4,hp:4});
+  game.enemies=[{id:200,x:0,y:10,age:1,hp:10}];
+  game.collectPowerup('chain');
+  game.updateElectrical(0.01,true);
+  assert.equal(turret.hp,2);
+  assert.equal(game.enemies[0].hp,10);
+  assert.equal(events.find(e=>e.type==='chainLightning').points.length,2);
 });
