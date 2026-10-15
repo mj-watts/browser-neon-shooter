@@ -1,6 +1,6 @@
 // Shared pixel silhouettes for rotating 3D packages and their HUD icons.
 export const POWER_ICONS = {
-  emp: ["..XXX..", ".X...X.", "X..X..X", "X.XXX.X", "X..X..X", ".X...X.", "..XXX.."],
+  emp: ["XXXXXXX", "X.....X", "X.XXX.X", "X.X.X.X", "X.XXX.X", "X.....X", "XXXXXXX"],
   chain: ["...XX..", "..XX...", ".XXXX..", "...XX..", "..XXXX.", "...XX..", "..XX..."],
   speed: [
     "....XX.",
