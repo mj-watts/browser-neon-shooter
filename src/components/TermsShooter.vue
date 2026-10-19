@@ -26,7 +26,6 @@ const upgradePixels = Object.fromEntries(
   ]),
 );
 const mounted = ref(false);
-const plain = ref(false);
 const active = ref(false);
 const loading = ref(false);
 const failure = ref("");
@@ -35,7 +34,6 @@ const articleRef = ref(null);
 const runwayRef = ref(null);
 const canvasRef = ref(null);
 const flightRef = ref(null);
-const plainToggleRef = ref(null);
 const state = ref({
   phase: "countdown",
   wave: 0,
@@ -166,7 +164,7 @@ async function ensureEngine() {
       });
       sampleText();
       engine.setProgress(progress.value);
-      engine.setVisible(!plain.value && (progress.value > 0 || active.value));
+      engine.setVisible(progress.value > 0 || active.value);
       return engine;
     } catch {
       handleFailure();
@@ -323,10 +321,10 @@ function pointerLeave(event) {
 }
 
 async function launch() {
-  if (active.value || failure.value || plain.value) return;
+  if (active.value || failure.value) return;
   unlockAudio();
   const instance = await ensureEngine();
-  if (!instance || disposed || plain.value || active.value) return;
+  if (!instance || disposed || active.value) return;
   hasLaunched = true;
   scrollBeforeGame = window.scrollY;
   previousOverflow = document.documentElement.style.overflow;
@@ -368,24 +366,14 @@ function exitGame() {
   engine?.transition();
   engine?.setVisible(false);
   unlockPage();
-  plain.value = true;
   progress.value = 0;
   nextTick(() => {
     articleRef.value?.scrollIntoView({ block: "start", behavior: "instant" });
-    plainToggleRef.value?.focus({ preventScroll: true });
-  });
-}
-function togglePlain() {
-  if (active.value) return exitGame();
-  plain.value = !plain.value;
-  engine?.setVisible(!plain.value && progress.value > 0);
-  nextTick(() => {
-    if (runwayRef.value) observer?.observe(runwayRef.value);
-    measureScroll();
+    articleRef.value?.focus({ preventScroll: true });
   });
 }
 function measureScroll() {
-  if (!runwayRef.value || active.value || plain.value) return;
+  if (!runwayRef.value || active.value) return;
   const rect = runwayRef.value.getBoundingClientRect();
   const height = window.innerHeight;
   progress.value = Math.max(
@@ -426,7 +414,7 @@ function loseFocus() {
 function visibilityChanged() {
   if (document.hidden) loseFocus();
   engine?.setVisible(
-    !document.hidden && !plain.value && (active.value || progress.value > 0),
+    !document.hidden && (active.value || progress.value > 0),
   );
 }
 function motionChanged(event) {
@@ -481,30 +469,22 @@ onBeforeUnmount(() => {
 <template>
   <section
     class="terms-shooter"
-    :class="{ 'terms-shooter--plain': plain }"
-    :style="{ '--dissolve': plain || reducedMotion ? 0 : progress }"
+    :style="{ '--dissolve': reducedMotion ? 0 : progress }"
     @pointerdown.capture="unlockAudio"
     @keydown.capture="unlockAudio"
   >
     <div class="terms-reading-toolbar">
-      <span>FLIGHT BRIEFING / READY WHEN YOU ARE</span
-      ><button
-        v-if="mounted"
-        ref="plainToggleRef"
-        :aria-pressed="plain"
-        @click="togglePlain"
-      >
-        {{ plain ? "Enable space flight ↗" : "Plain reading mode ↗" }}
-      </button>
+      <span>FLIGHT BRIEFING / READY WHEN YOU ARE</span>
     </div>
     <article
       ref="articleRef"
+      tabindex="-1"
       class="terms-document"
       aria-label="Flight briefing"
     >
       <slot />
     </article>
-    <div v-if="mounted && !plain" ref="runwayRef" class="terms-runway">
+    <div v-if="mounted" ref="runwayRef" class="terms-runway">
       <div class="terms-launch-copy">
         <p class="terms-launch-kicker">
           SYSTEMS READY. YOUR NEXT FLIGHT STARTS HERE.
@@ -546,7 +526,7 @@ onBeforeUnmount(() => {
     </div>
     <Teleport v-if="mounted" to="body">
       <div
-        v-show="!plain && (progress > 0 || active)"
+        v-show="progress > 0 || active"
         ref="flightRef"
         class="terms-flight-layer"
         :class="{ 'terms-flight-layer--active': active }"
@@ -570,7 +550,7 @@ onBeforeUnmount(() => {
         <template v-if="active">
           <div class="flight-vignette" aria-hidden="true"></div>
           <header class="flight-hud">
-            <div class="flight-brand">1MINUS1 <span>AFTER HOURS</span></div>
+            <div class="flight-brand"><span>AFTER HOURS</span></div>
             <div class="flight-stats">
               <div class="flight-score">
                 <span>SCORE</span><strong>{{ formatScore }}</strong>

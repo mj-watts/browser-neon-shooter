@@ -207,9 +207,6 @@
 .terms-touch-controls {
   display: none;
 }
-.terms-shooter--plain {
-  padding-bottom: 90px;
-}
 .terms-shooter button:focus-visible,
 .terms-shooter a:focus-visible,
 .terms-flight-layer button:focus-visible {

@@ -8,9 +8,12 @@ test("launch, play, pause, sound, exit and relaunch without runtime errors", asy
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Neon Shooter", exact: true })).toBeVisible();
+  await expect(page.locator(".terms-flight-heading > p")).toHaveText("AFTER HOURS");
+  await expect(page.getByRole("button", { name: /Plain reading mode|Enable space flight/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Launch flight" }).click();
   const flight = page.getByRole("application", { name: "Neon space shooter" });
   await expect(flight).toBeVisible();
+  await expect(flight.locator(".flight-brand")).toHaveText("AFTER HOURS");
   await expect(flight.locator("canvas")).toBeVisible();
   await expect(flight.locator(".flight-wave strong")).toHaveText("01", { timeout: 15000 });
   await page.keyboard.down(" ");
@@ -26,7 +29,6 @@ test("launch, play, pause, sound, exit and relaunch without runtime errors", asy
   await expect(page.getByRole("button", { name: "Sound off", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Flight briefing ↗", exact: true }).click();
   await expect(flight).toBeHidden();
-  await page.getByRole("button", { name: "Enable space flight" }).click();
   await page.getByRole("button", { name: "Fly again" }).click();
   await expect(flight).toBeVisible();
   expect(errors).toEqual([]);

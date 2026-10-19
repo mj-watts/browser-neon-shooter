@@ -5,7 +5,7 @@ import TermsShooter from "./components/TermsShooter.vue";
 <template>
   <main class="terms-flight-page">
     <header class="terms-flight-heading">
-      <p>1MINUS1 / AFTER HOURS</p>
+      <p>AFTER HOURS</p>
       <h1>Neon Shooter<span aria-hidden="true">.</span></h1>
       <span>A whole universe down here.</span>
     </header>
