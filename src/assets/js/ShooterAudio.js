@@ -1,5 +1,5 @@
 // Looping MP3 soundtrack and game sound effects synthesized with Web Audio.
-// Nothing plays until gameplay requests it and the browser permits audio.
+// Playback starts when a menu or gameplay requests it and the browser permits audio.
 const frequency = (midi) => 440 * 2 ** ((midi - 69) / 12);
 
 export default class ShooterAudio {
@@ -9,6 +9,9 @@ export default class ShooterAudio {
       return Context ? new Context() : null;
     },
     soundtrackUrl,
+    menuSoundtrackUrl,
+    setTimer = (callback, delay) => setTimeout(callback, delay),
+    clearTimer = (timer) => clearTimeout(timer),
     gameoverUrl,
     bigshipUrl,
     engagingUrls = [],
@@ -18,6 +21,10 @@ export default class ShooterAudio {
     onStatus = () => {},
   } = {}) {
     this.soundtrackUrl = soundtrackUrl;
+    this.menuSoundtrackUrl = menuSoundtrackUrl;
+    this.setTimer = setTimer;
+    this.clearTimer = clearTimer;
+    this.menuActive = false;
     this.gameoverUrl = gameoverUrl;
     this.bigshipUrl = bigshipUrl;
     this.sirenUrl = sirenUrl;
@@ -72,6 +79,47 @@ export default class ShooterAudio {
     return ctx;
   }
 
+  setMenuActive(active) {
+    this.menuActive = active && !this.disposed;
+    if (!this.menuActive) {
+      this.clearTimer(this.menuTimer);
+      this.menuTimer = undefined;
+      this.menuTrack?.pause();
+      if (this.menuTrack) this.menuTrack.currentTime = 0;
+    } else this.syncMenuMusic();
+  }
+
+  syncMenuMusic() {
+    if (!this.menuActive || this.disposed || !this.menuSoundtrackUrl) return;
+    try {
+      if (!this.menuTrack) {
+        this.menuTrack = this.createTrack(this.menuSoundtrackUrl);
+        this.menuTrack.loop = false;
+        this.menuTrack.volume = 0.45;
+        this.menuTrack.preload = "auto";
+        this.menuTrack.currentTime = 0;
+        this.menuTrack.onended = () => {
+          if (!this.menuActive || this.disposed) return;
+          this.menuTimer = this.setTimer(() => {
+            this.menuTimer = undefined;
+            if (!this.menuActive || this.disposed) return;
+            this.menuTrack.currentTime = 0;
+            this.syncMenuMusic();
+          }, 2000 + Math.random() * 2000);
+        };
+      }
+      this.menuTrack.muted = this.muted;
+      if (this.menuTimer !== undefined || !this.menuTrack.paused) return;
+      void this.menuTrack.play().then(() => {
+        if (!this.menuActive || this.disposed) this.menuTrack?.pause();
+      }).catch(() => {
+        // Retry after the next user gesture if autoplay was blocked.
+      });
+    } catch {
+      // Missing menu audio must leave the controls usable.
+    }
+  }
+
   syncMusic() {
     if (!this.active || this.paused || this.disposed) {
       this.track?.pause();
@@ -120,6 +168,7 @@ export default class ShooterAudio {
 
   unlock() {
     if (this.disposed) return;
+    this.syncMenuMusic();
     this.syncMusic();
     try {
       const ctx = this.ensureContext();
@@ -138,6 +187,7 @@ export default class ShooterAudio {
   }
 
   start() {
+    this.setMenuActive(false);
     this.ending = false;
     this.stopBigship();
     this.stopEngaging();
@@ -627,6 +677,7 @@ export default class ShooterAudio {
 
   setMuted(muted) {
     this.muted = muted;
+    if (this.menuTrack) this.menuTrack.muted = muted;
     if (this.track) this.track.muted = muted;
     if (this.gameoverTrack) this.gameoverTrack.muted = muted;
     if (this.bigshipTrack) this.bigshipTrack.muted = muted;
@@ -647,6 +698,7 @@ export default class ShooterAudio {
 
   setPaused(paused) {
     this.paused = paused;
+    this.setMenuActive(paused && (this.active || this.ending));
     if (this.sirenOutput)
       this.sirenOutput.gain.value = paused || this.muted || !this.active ? 0 : 1;
     if (paused) {
@@ -699,6 +751,12 @@ export default class ShooterAudio {
 
   dispose() {
     this.disposed = true;
+    this.setMenuActive(false);
+    if (this.menuTrack) {
+      this.menuTrack.onended = null;
+      this.menuTrack.removeAttribute("src");
+      this.menuTrack.load();
+    }
     if (this.context) this.context.onstatechange = null;
     this.stop();
     if (this.track) {

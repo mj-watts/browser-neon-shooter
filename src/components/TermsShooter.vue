@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { POWER_ICONS } from "../assets/js/BlockIcons";
+import menuSoundtrackUrl from "../assets/sound/menu-soundtrack.mp3?url";
 import soundtrackUrl from "../assets/sound/soundtrack.mp3?url";
 import gameoverUrl from "../assets/sound/gameover.mp3?url";
 import bigshipUrl from "../assets/sound/bigship.mp3?url";
@@ -184,6 +185,7 @@ function unlockAudio() {
   if (!sound) {
     sound = new ShooterAudio({
       soundtrackUrl,
+      menuSoundtrackUrl,
       gameoverUrl,
       bigshipUrl,
       engagingUrls: [engagingUrl, engaging2Url],
@@ -194,6 +196,7 @@ function unlockAudio() {
       },
     });
     sound.setMuted(soundMuted.value);
+    sound.setMenuActive(!active.value || state.value.paused);
   }
   sound.unlock();
 }
@@ -365,6 +368,7 @@ function exitGame() {
   sound?.stop();
   engine?.transition();
   engine?.setVisible(false);
+  sound?.setMenuActive(true);
   unlockPage();
   progress.value = 0;
   nextTick(() => {
@@ -475,6 +479,9 @@ onBeforeUnmount(() => {
   >
     <div class="terms-reading-toolbar">
       <span>FLIGHT BRIEFING / READY WHEN YOU ARE</span>
+      <button v-if="!active" type="button" :aria-pressed="!soundMuted" @click="toggleSound">
+        {{ soundMuted ? "Sound off" : "Sound on" }}
+      </button>
     </div>
     <article
       ref="articleRef"
@@ -603,6 +610,7 @@ onBeforeUnmount(() => {
               {{ state.paused ? "Resume" : "Pause" }}</button
             ><button
               class="flight-control"
+              v-if="!state.paused"
               :aria-pressed="!soundMuted && !audioBlocked"
               @click.stop="toggleSound"
             >
@@ -790,7 +798,9 @@ onBeforeUnmount(() => {
             <template v-if="state.paused"
               ><button class="terms-launch-button" @click.stop="togglePause">
                 Resume flight →</button
-              ><button class="flight-control" @click.stop="exitGame">
+              ><button class="flight-control" :aria-pressed="!soundMuted" @click.stop="toggleSound">
+                {{ soundMuted ? "Sound off" : "Sound on" }}
+              </button><button class="flight-control" @click.stop="exitGame">
                 Back to briefing
               </button></template
             ><template v-else-if="isGameOver"

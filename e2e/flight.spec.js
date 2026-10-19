@@ -63,3 +63,37 @@ test("touch layout launches with automatic fire", async ({ browser }) => {
   await expect(page.locator(".flight-wave strong")).toHaveText("01", { timeout: 15000 });
   expect(errors).toEqual([]);
 });
+
+test("Unity menu soundtrack plays across briefing, pause and resume", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.testAudioTracks = [];
+    const NativeAudio = window.Audio;
+    window.Audio = function (...args) {
+      const track = new NativeAudio(...args);
+      window.testAudioTracks.push(track);
+      return track;
+    };
+  });
+  const menuPlaying = () => page.evaluate(() => window.testAudioTracks.some(track =>
+    track.src.includes("menu-soundtrack") && !track.paused && track.readyState >= 2));
+  const menuPaused = () => page.evaluate(() => window.testAudioTracks.filter(track =>
+    track.src.includes("menu-soundtrack")).every(track => track.paused));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.locator(".terms-reading-toolbar > span").click();
+  await expect.poll(menuPlaying).toBe(true);
+  await page.getByRole("button", { name: "Launch flight" }).click();
+  await expect(page.getByRole("application", { name: "Neon space shooter" })).toBeVisible();
+  await expect.poll(menuPaused).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("heading", { name: "PAUSED", exact: true })).toBeVisible();
+  await expect.poll(menuPlaying).toBe(true);
+  await page.getByRole("button", { name: "Sound on", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.testAudioTracks.find(track =>
+    track.src.includes("menu-soundtrack"))?.muted)).toBe(true);
+  await page.getByRole("button", { name: "Sound off", exact: true }).click();
+  await page.getByRole("button", { name: "Resume flight" }).click();
+  await expect.poll(menuPaused).toBe(true);
+  await page.getByRole("button", { name: "Flight briefing ↗", exact: true }).click();
+  await expect.poll(menuPlaying).toBe(true);
+});

@@ -696,3 +696,81 @@ test("siren mixes a reverb tail and gates it on mute and stop", () => {
   assert.equal(audio.sirenOutput.gain.value, 0);
   audio.dispose();
 });
+
+test("Unity menu music follows menu, gameplay, pause, mute and disposal", async () => {
+  const menu = trackStub();
+  const gameplay = trackStub();
+  const { audio } = setup({
+    menuSoundtrackUrl: "/menu.mp3",
+    soundtrackUrl: "/game.mp3",
+    createTrack: url => url === "/menu.mp3" ? menu : gameplay,
+  });
+  audio.setMenuActive(true);
+  await Promise.resolve();
+  assert.equal(menu.paused, false);
+  assert.equal(menu.loop, false);
+  assert.equal(menu.volume, 0.45);
+  audio.start();
+  await Promise.resolve();
+  assert.equal(menu.paused, true);
+  assert.equal(gameplay.paused, false);
+  audio.setPaused(true);
+  await Promise.resolve();
+  assert.equal(menu.paused, false);
+  assert.equal(gameplay.paused, true);
+  audio.setMuted(true);
+  assert.equal(menu.muted, true);
+  audio.setMuted(false);
+  assert.equal(menu.muted, false);
+  audio.setPaused(false);
+  await Promise.resolve();
+  assert.equal(menu.paused, true);
+  assert.equal(gameplay.paused, false);
+  audio.stop();
+  audio.setMenuActive(true);
+  assert.equal(menu.paused, false);
+  audio.dispose();
+  assert.equal(menu.paused, true);
+  assert.equal(menu.onended, null);
+  assert.equal(menu.removed, true);
+});
+
+test("menu repeats after a 2–4 second gap without interactions skipping the silence", () => {
+  const menu = trackStub();
+  const { audio, tick, timers } = setup({ menuSoundtrackUrl: "/menu.mp3", createTrack: () => menu });
+  let repeatDelay;
+  const schedule = audio.setTimer;
+  audio.setTimer = (callback, delay) => {
+    repeatDelay = delay;
+    return schedule(callback, delay);
+  };
+  audio.setMenuActive(true);
+  menu.paused = true;
+  menu.onended();
+  assert.equal(timers(), 1);
+  assert.ok(repeatDelay >= 2000 && repeatDelay <= 4000);
+  audio.unlock();
+  assert.equal(menu.plays, 1);
+  tick();
+  assert.equal(menu.plays, 2);
+  menu.onended();
+  audio.start();
+  tick();
+  assert.equal(menu.paused, true);
+  audio.dispose();
+});
+
+test("blocked menu audio retries on a gesture and never restarts after disposal", async () => {
+  const menu = trackStub();
+  menu.play = () => Promise.reject(new Error("autoplay blocked"));
+  const { audio } = setup({ menuSoundtrackUrl: "/menu.mp3", createTrack: () => menu });
+  audio.setMenuActive(true);
+  await new Promise(resolve => setImmediate(resolve));
+  menu.play = async () => { menu.paused = false; };
+  audio.unlock();
+  await Promise.resolve();
+  assert.equal(menu.paused, false);
+  audio.dispose();
+  audio.unlock();
+  assert.equal(menu.paused, true);
+});
